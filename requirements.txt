@@ -1,0 +1,9 @@
+groq==0.8.0
+requests==2.32.2
+streamlit==1.35.0
+pytube==15.0.0
+watchdog==4.0.1
+streamlit-audiorecorder==0.0.5
+streamlit-extras==0.4.2
+llama-index==0.10.41
+llama-index-embeddings-huggingface==0.2.1
