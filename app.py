@@ -191,6 +191,7 @@ def chat_container():
                 with transcribe_status.status("Transcribing", expanded=True) as transcribe_status:
                     output = prerecorded({"buffer": st.session_state["audio"], "mimetype": st.session_state.get("mimetype", "audio/wav")}, options['model'], options)
                     st.session_state.result = output['text']
+                    #TODO: download button does not work if user chats multiple times
                     transcribe_button_container.download_button("Download Transcript", data=st.session_state.result, type="primary", file_name="transcript.txt")
                     time_taken = output['time_taken']
                     transcribe_status.update(label=f"_Completed in {round(time_taken, 2)}s_", state='complete')
