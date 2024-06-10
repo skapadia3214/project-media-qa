@@ -1,3 +1,6 @@
+'''
+Main entry file for the streamlit app
+'''
 from io import BytesIO
 from groq import Groq
 import streamlit as st

@@ -1,4 +1,6 @@
-
+'''
+This file contains all the custom styling for the components used.
+'''
 
 button_css = """
     button {

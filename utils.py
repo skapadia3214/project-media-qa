@@ -1,3 +1,6 @@
+'''
+All utility functions used in the app
+'''
 from typing import Iterable
 import time
 from io import BytesIO
