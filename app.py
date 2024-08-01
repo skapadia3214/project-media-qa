@@ -2,15 +2,26 @@
 Main entry file for the streamlit app
 '''
 from io import BytesIO
-from groq import Groq
+import os
 import streamlit as st
-from styles import button_css, selectbox_css, file_uploader_css, header_container_css, transcript_container
+from styles import button_css, selectbox_css, file_uploader_css, header_container_css, transcript_container, popover_container_css
 from audiorecorder import audiorecorder
+from groq import Groq
 from streamlit_extras.stylable_container import stylable_container
 from utils import read_from_url, prerecorded, chat_stream, create_vectorstore, read_from_youtube
-from config import GROQ_CLIENT, VECTOR_INDEX
+from config import VECTOR_INDEX, GROQ_CLIENT
 
-VECTOR_INDEX = VECTOR_INDEX
+CHAT_RATE_LIMIT = os.getenv("CHAT_RATE_LIMIT", 4)
+WHISPER_RATE_LIMIT = os.getenv("WHISPER_RATE_LIMIT", 4)
+
+if "groq_api_key" not in st.session_state:
+    st.session_state['groq_api_key'] = None
+
+if "chat_calls" not in st.session_state:
+    st.session_state['chat_calls'] = 0
+
+if "whisper_calls" not in st.session_state:
+    st.session_state['whisper_calls'] = 0
 
 st.set_page_config(
     page_title="Project Media QA",
@@ -20,8 +31,6 @@ st.set_page_config(
         'About': "## Project Media QA \n [Groqlabs](https://wow.groq.com/groq-labs/)"
     }
 )
-
-groqClient = Groq()
 
 st.markdown("<a href='https://wow.groq.com/groq-labs/'><img src='app/static/logo.png' width='200'></a>", unsafe_allow_html=True)
 st.write("---")
@@ -34,13 +43,8 @@ header_container.header("Project Media QA", anchor=False)
 
 ASR_MODELS = {"Whisper V3 large": "whisper-large-v3"}
 
-GROQ_MODELS = {
-    "Llama-3-8B-8192": "llama3-8b-8192",
-    "Llama-3-70B-8192": "llama3-70b-8192",
-    "Mixtral-8x7b-32768": "mixtral-8x7b-32768",
-    "Gemma-7B-It": "gemma-7b-it",
-    "Gemma2-9B-It": "gemma2-9b-it",
-}
+
+GROQ_MODELS = {model.id.replace("-", " ").title() : model.id for model in Groq().models.list().data if not (model.id.startswith("whisper") or model.id.startswith("llama-guard"))}
 
 LANGUAGES = {
     "Automatic Language Detection": None,
@@ -48,6 +52,20 @@ LANGUAGES = {
 
 
 st.caption("Experience ultra-accelerated video and audio transcription, summarization, & QA made possible by combining open-source LLMs and ASR models both powered by Groq.")
+
+st.caption(f"By default you are limited to **{WHISPER_RATE_LIMIT}** transcriptions and **{CHAT_RATE_LIMIT}** chats per day. Once reached, you can use your own Groq API key to process additional requests.")
+
+popover_container = stylable_container(
+    key="header",
+    css_styles=popover_container_css
+)
+with popover_container.popover("GROQ API KEY"):
+    api_key = st.text_input("GROQ_API_KEY", placeholder="gsk...", type='password')
+    if api_key:
+        import config
+        st.session_state['groq_api_key'] = api_key
+        config.GROQ_CLIENT = Groq(api_key=api_key)
+        st.success("API key updated successfully!")
 
 
 # Dropdowns with styling
@@ -126,7 +144,6 @@ elif audio_source == "Load media from URL":
                     st.audio(st.session_state["audio"])
                 print(f"Audio bytes: {st.session_state['audio'].getbuffer().nbytes} bytes")
         except Exception as e:
-            raise e
             st.error(e)
             st.error("Invalid URL entered.")
 
@@ -168,7 +185,12 @@ def transcribe_container():
         if transcribe_button:
             try:
                 with transcribe_status.status("Transcribing", expanded=True) as transcribe_status:
-                    output = prerecorded({"buffer": st.session_state["audio"], "mimetype": st.session_state.get("mimetype", "audio/wav")}, options['model'], options)
+                    print(st.session_state['whisper_calls'])
+                    if (not st.session_state['groq_api_key']) and (st.session_state['whisper_calls'] >= WHISPER_RATE_LIMIT):
+                        st.warning("You have reached the limit to transcribe. Please add your own GROQ API KEY to continue transcribing")
+                        return
+                    st.session_state['whisper_calls'] += 1
+                    output = prerecorded({"buffer": st.session_state["audio"], "mimetype": st.session_state.get("mimetype", "audio/wav")}, options['model'])
                     st.session_state.result = output['text']
                     transcribe_button_container.download_button("Download Transcript", data=st.session_state.result, type="primary", file_name="transcript.txt")
                     time_taken = output['time_taken']
@@ -179,7 +201,6 @@ def transcribe_container():
                         print(f"Indexing transcript to vectorstore...")
                         VECTOR_INDEX = create_vectorstore(st.session_state.result)
             except Exception as e:
-                raise e
                 transcribe_status.update(label="Error", state='error')
                 st.error("Something went wrong :/")
 
@@ -196,7 +217,12 @@ def chat_container():
         if not st.session_state.get("result"):
             try:
                 with transcribe_status.status("Transcribing", expanded=True) as transcribe_status:
-                    output = prerecorded({"buffer": st.session_state["audio"], "mimetype": st.session_state.get("mimetype", "audio/wav")}, options['model'], options)
+                    print(st.session_state['whisper_calls'])
+                    if (not st.session_state['groq_api_key']) and (st.session_state['whisper_calls'] >= WHISPER_RATE_LIMIT):
+                        st.warning("You have reached the limit to transcribe. Please add your own GROQ API KEY to continue transcribing")
+                        return
+                    output = prerecorded({"buffer": st.session_state["audio"], "mimetype": st.session_state.get("mimetype", "audio/wav")}, options['model'])
+                    st.session_state['whisper_calls'] += 1
                     st.session_state.result = output['text']
                     #TODO: download button does not work if user chats multiple times
                     transcribe_button_container.download_button("Download Transcript", data=st.session_state.result, type="primary", file_name="transcript.txt")
@@ -207,11 +233,13 @@ def chat_container():
                     with st.spinner("Indexing documents..."):
                         VECTOR_INDEX = create_vectorstore(st.session_state.result)
             except Exception as e:
-                raise e
                 transcribe_status.update(label="Error", state='error')
                 st.error("Something went wrong :/")
         
         # Chat
+        if (not st.session_state['groq_api_key']) and (st.session_state['chat_calls'] >= CHAT_RATE_LIMIT):
+            st.warning("You have reached the limit to chat. Please add your own GROQ API KEY to continue chatting")
+            return
         if len(st.session_state.result) <= 2000:
             print("Stuffing whole transcript into system prompt")
             context = st.session_state.result
@@ -246,8 +274,8 @@ Your responses should be in markdown. \
                 transcribe_status.update(expanded=False)
             with st.chat_message("ai", avatar="./static/ai_avatar.png"):
                 st.write_stream(gen)
+            st.session_state['chat_calls'] += 1
         except Exception as e:
-            raise e
             st.error("Something went wrong:/")
     return
 

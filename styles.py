@@ -61,6 +61,11 @@ header_container_css = """
     }
 """
 
+popover_container_css = """
+    .st-emotion-cache-9dv452 {
+        border-radius: 0rem;
+    }
+"""
 transcript_container = """
     details {
         border-radius: 0rem;

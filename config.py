@@ -8,7 +8,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.ingestion import IngestionPipeline, IngestionCache
 from groq import Groq
 
-global EMBED_MODEL, PIPELINE, GROQ_CLIENT, VECTOR_INDEX
+global EMBED_MODEL, PIPELINE, GROQ_CLIENT, VECTOR_INDEX, GROQ_API_KEY
 
 EMBED_MODEL = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
 PIPELINE = IngestionPipeline(
@@ -17,5 +17,6 @@ PIPELINE = IngestionPipeline(
         EMBED_MODEL,
     ]
 )
+GROQ_API_KEY: str = None
 GROQ_CLIENT = Groq()
 VECTOR_INDEX: VectorStoreIndex = None

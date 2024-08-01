@@ -10,6 +10,7 @@ from groq.types.chat import ChatCompletionMessageParam
 from llama_index.core import Document, VectorStoreIndex
 import yt_dlp
 from config import GROQ_CLIENT, EMBED_MODEL, VECTOR_INDEX, PIPELINE
+import config
 
 def combine_text_with_markers_and_speaker(data):
     combined_text = ""
@@ -76,7 +77,10 @@ def read_from_youtube(url: str) -> tuple[BytesIO, str]:
     
 #     return BytesIO(audio_data)
 
-def prerecorded(source, model: str = "whisper-large-v3", options: dict[str, str] = None) -> None:
+def prerecorded(
+    source, 
+    model: str = "whisper-large-v3"
+) -> None:
     print(f"Source: {source} ")
     start = time.time()
     audio_bytes: BytesIO = source['buffer']
@@ -85,7 +89,7 @@ def prerecorded(source, model: str = "whisper-large-v3", options: dict[str, str]
         file_type = "audio/wav"
     file_type = file_type.split("/")[1]
     print(f"Final filetype: {file_type}")
-    transcription = GROQ_CLIENT.audio.transcriptions.create(
+    transcription = config.GROQ_CLIENT.audio.transcriptions.create(
         file=(f"audio.{file_type}", audio_bytes.read()),
         model=model,
     )
@@ -104,7 +108,7 @@ def create_vectorstore(transcript: str):
 
 def chat_stream(model: str, messages: Iterable[ChatCompletionMessageParam], **kwargs):
     # Retrieve documents from the vectorstore
-    stream_response = GROQ_CLIENT.chat.completions.create(
+    stream_response = config.GROQ_CLIENT.chat.completions.create(
         messages=messages,
         model=model,
         stream=True,
