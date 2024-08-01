@@ -11,8 +11,8 @@ from streamlit_extras.stylable_container import stylable_container
 from utils import read_from_url, prerecorded, chat_stream, create_vectorstore, read_from_youtube
 from config import VECTOR_INDEX, GROQ_CLIENT
 
-CHAT_RATE_LIMIT = os.getenv("CHAT_RATE_LIMIT", 4)
-WHISPER_RATE_LIMIT = os.getenv("WHISPER_RATE_LIMIT", 4)
+CHAT_RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", 4))
+WHISPER_RATE_LIMIT = int(os.getenv("WHISPER_RATE_LIMIT", 4))
 
 if "groq_api_key" not in st.session_state:
     st.session_state['groq_api_key'] = None
