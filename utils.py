@@ -1,13 +1,14 @@
 '''
 All utility functions used in the app
 '''
+import os
 from typing import Iterable
 import time
 from io import BytesIO
 import requests
-from pytube import YouTube
 from groq.types.chat import ChatCompletionMessageParam
 from llama_index.core import Document, VectorStoreIndex
+import yt_dlp
 from config import GROQ_CLIENT, EMBED_MODEL, VECTOR_INDEX, PIPELINE
 
 def combine_text_with_markers_and_speaker(data):
@@ -23,24 +24,59 @@ def read_from_url(url: str) -> BytesIO:
     audio_bytes = BytesIO(res.content)
     return audio_bytes
 
-def read_from_youtube(url: str):
-    yt = YouTube(url)
-    video = yt.streams.filter(only_audio=True, mime_type="audio/webm").first()
+def read_from_youtube(url: str) -> tuple[BytesIO, str]:
+    ydl_opts = {
+        'format': 'worstaudio/worst',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'm4a',
+            'preferredquality': '32',
+        }],
+        'outtmpl': 'temp_audio.%(ext)s',
+    }
     
-    if video is None:
-        raise ValueError("No audio/webm stream found for the given YouTube URL.")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        filename = ydl.prepare_filename(info)
+        
+        # The file extension might have changed due to FFmpeg conversion
+        if os.path.exists(filename):
+            actual_filename = filename
+        elif os.path.exists(filename.rsplit('.', 1)[0] + '.m4a'):
+            actual_filename = filename.rsplit('.', 1)[0] + '.m4a'
+        else:
+            raise FileNotFoundError(f"Could not find the downloaded audio file: {filename}")
+        
+        # Read the file into a BytesIO object
+        with open(actual_filename, 'rb') as f:
+            buffer = BytesIO(f.read())
+        
+        # Get the MIME type
+        mime_type = f"audio/{actual_filename.split('.')[-1]}"
+        
+        # Delete the temporary file
+        os.remove(actual_filename)
     
-    buffer = BytesIO()
-    video.stream_to_buffer(buffer)
-    buffer.seek(0)
-    
-    audio_data = buffer.read()
-    
-    print(f"Audio retrieved as audio/webm (mimetype: {video.mime_type})")
-    
-    return BytesIO(audio_data)
+    return buffer, mime_type
 
-def prerecorded(source, model: str, options: dict[str, str] = None) -> None:
+# def read_from_youtube(url: str):
+#     yt = YouTube(url)
+#     video = yt.streams.filter(only_audio=True, mime_type="audio/webm").first()
+    
+#     if video is None:
+#         raise ValueError("No audio/webm stream found for the given YouTube URL.")
+    
+#     buffer = BytesIO()
+#     video.stream_to_buffer(buffer)
+#     buffer.seek(0)
+    
+#     audio_data = buffer.read()
+    
+#     print(f"Audio retrieved as audio/webm (mimetype: {video.mime_type})")
+    
+#     return BytesIO(audio_data)
+
+def prerecorded(source, model: str = "whisper-large-v3", options: dict[str, str] = None) -> None:
     print(f"Source: {source} ")
     start = time.time()
     audio_bytes: BytesIO = source['buffer']

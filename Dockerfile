@@ -14,6 +14,9 @@ RUN apt-get update && \
 RUN pip install -r requirements.txt
 
 # https://github.com/pytube/pytube/issues/1498#issuecomment-1475993725
-RUN sed -i 's/transform_plan_raw =.*/transform_plan_raw = js/g' /usr/local/lib/python3.10/site-packages/pytube/cipher.py
+# RUN sed -i 's/transform_plan_raw =.*/transform_plan_raw = js/g' /usr/local/lib/python3.10/site-packages/pytube/cipher.py
+
+# https://github.com/pytube/pytube/issues/1954#issuecomment-2218305516
+# COPY cipher.py /usr/local/lib/python3.10/site-packages/pytube/cipher.py
 
 CMD ["streamlit", "run", "app.py", "--server.port", "8080"]
