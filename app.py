@@ -34,13 +34,7 @@ header_container.header("Project Media QA", anchor=False)
 
 ASR_MODELS = {"Whisper V3 large": "whisper-large-v3"}
 
-GROQ_MODELS = {
-    "Llama-3-8B-8192": "llama3-8b-8192",
-    "Llama-3-70B-8192": "llama3-70b-8192",
-    "Mixtral-8x7b-32768": "mixtral-8x7b-32768",
-    "Gemma-7B-It": "gemma-7b-it",
-    "Gemma2-9B-It": "gemma2-9b-it",
-}
+GROQ_MODELS = {model.id.replace("-", " ").title() : model.id for model in Groq().models.list().data if not (model.id.startswith("whisper") or model.id.startswith("llama-guard"))}
 
 LANGUAGES = {
     "Automatic Language Detection": None,
