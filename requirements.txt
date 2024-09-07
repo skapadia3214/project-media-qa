@@ -6,4 +6,4 @@ streamlit-audiorecorder==0.0.5
 streamlit-extras==0.4.2
 llama-index==0.10.41
 llama-index-embeddings-huggingface==0.2.1
-yt_dlp==2024.7.16
+yt_dlp
