@@ -72,3 +72,7 @@ This project is licensed under the [MIT License](LICENSE).
 ## Contact
 
 If you have any questions or suggestions regarding this project, please feel free to contact the project maintainer at [skapadia@groq.com](mailto:skapadia@groq.com).
+
+### Misc.
+
+You need to install the audiorecorder library from pip which requires ```portaudio```. If you're on Mac and have Homebrew, you can run the command ```brew install portaudio```
